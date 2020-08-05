@@ -100,9 +100,23 @@ def print_stats(stats):
 
   tabulate.PRESERVE_WHITESPACE = True
   print(tabulate.tabulate(table, headers=header, tablefmt='pretty', colalign=('left', 'right')))
+  if merge(stats['unknown_char_count']):
+    print("WARNING: The file contains unknown characters for DNA, RNA and AA sequences. ")
+    print("         It will probably fail in applications with strict alphabet checking.")
   print('')
 
+def merge(dict_of_dicts):
+  merged = {}
+  for name, subdict in dict_of_dicts.items():
+    for k,v in subdict.items():
+      if k not in merged:
+        merged[k] = v
+      else:
+        merged[k] = merged[k] + v
+  return merged
+
 def count(record, stats):
+  '''counts the number of processed sequences in the field "sequences".'''
   if 'sequences' not in stats:
     stats['sequences'] = 0
   stats['sequences'] = stats['sequences'] + 1
@@ -117,6 +131,8 @@ def compute_character_distribution(record, stats):
   stats['_character_distribution'] = distribution
 
 def compute_character_positions(record, stats):
+  '''computes a dictionary with all positions per character of the current 
+  sequence and stores it in "_character_positions"'''
   positions = {}
   for i, c in enumerate(record.seq.upper()):
     if c not in positions:
@@ -125,10 +141,14 @@ def compute_character_positions(record, stats):
   stats['_character_positions'] = positions
 
 def count_sequences_with_special_characters(record, stats):
+  '''counts the sequences with special characters (depends on the alphabet)
+  and stores them in "special_char_count.<sequence_category>.<character>"'''
   alphabet = assert_sequence_type_available(stats)
   _count(stats, 'special_char_count', alphabet.special_chars)
 
 def count_sequences_with_ambiguous_characters(record, stats):
+  '''counts the sequences with ambiguous characters (depends on the alphabet)
+  and stores them in "ambiguous_char_count.<sequence_category>.<character>"'''
   alphabet = assert_sequence_type_available(stats)
   _count(stats, 'ambiguous_char_count', alphabet.ambiguous_chars)
 
@@ -147,6 +167,8 @@ def _count(stats, fieldname, chars):
       counts[c] = counts[c] + 1
 
 def count_sequences_with_unknown_characters(record, stats):
+  '''counts the sequences with unknown characters (depends on the alphabet)
+  and stores them in "ambiguous_char_count.<sequence_category>.<character>"'''
   category_name = assert_sequence_category_name_available(stats)
   alphabet = assert_sequence_type_available(stats)
   c_dist = assert_character_distribution_available(stats)
@@ -161,42 +183,6 @@ def count_sequences_with_unknown_characters(record, stats):
       if c not in counts:
         counts[c] = 0
       counts[c] = counts[c] + 1
-
-def check_has_X(record, stats):
-  '''Checks if the sequence contains 'X'. This character denotes ambiguity in
-  amino acid sequences. In blastp these characters won't be aligned.'''
-  _process_character(stats, 'X', 'Xs')
-
-def check_has_star(record, stats):
-  '''Checks if the sequence contains '*' and increases the counter. 
-  This usually denotes stop codons in amino acid sequences. Some tools 
-  cannot handle these sequnces'''
-  _process_character(stats, '*', 'stars')
-
-def check_has_dot(record, stats):
-  '''Checks if the sequence contains '.' and increases the counter. 
-  While unproblematic for DNA and RNA sequences this may cause problems for proteins.
-  The diamond aligner cannot handle sequences with dots'''
-  _process_character(stats, '.', 'dots')
-
-def check_has_dash(record, stats):
-  '''Checks if the sequence contains '-'. This character is used in alignments saved
-  in fasta files.'''
-  _process_character(stats, '-', 'dash')
-
-def check_has_N(record, stats):
-  '''Checks if the sequence contains 'N'. This character denotes ambiguity in
-  DNA sequences.'''
-  _process_character(stats, 'N', 'Ns')
-
-dna_unambiguous_alphabet = Alphabet.DNA.unambiguous_chars
-dna_ambiguous_alphabet = ['A','T','G','C','N','R','Y','S','W','K','M','B','D','H','V','.','-']
-rna_unambiguous_alphabet = ['A','U','G','C']
-rna_ambiguous_alphabet = ['A','U','G','C','N','R','Y','S','W','K','M','B','D','H','V','.','-']
-aa_unambiguous_alphabet=['A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y','*']
-aa_ambiguous_alphabet=['A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y','X','*','_','B','Z','J']
-
-allchars = set(dna_unambiguous_alphabet + dna_ambiguous_alphabet + rna_unambiguous_alphabet + rna_ambiguous_alphabet + aa_unambiguous_alphabet + aa_ambiguous_alphabet)
 
 def detect_sequence_type(record, stats):
   c_dist = assert_character_distribution_available(stats)
@@ -250,13 +236,6 @@ def contains_only(dist, characters):
     if c in dist:
       remaining = remaining - 1
   return remaining == 0
-
-def _process_character(stats, character, field):
-  assert_character_distribution_available(stats)
-  if character in stats['_character_distribution']:
-    if field not in stats:
-      stats[field] = 0
-    stats[field] = stats[field] + 1
 
 def assert_character_distribution_available(stats):
   assert '_character_distribution' in stats, 'Sequence character distribution not availabe. It must be computed before this check.'

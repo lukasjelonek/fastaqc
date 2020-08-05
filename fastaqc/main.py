@@ -3,6 +3,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 import logging
 from pbr.version import VersionInfo
+from Bio import SeqIO
 import itertools
 from prettytable import PrettyTable
 import tabulate
@@ -13,7 +14,7 @@ import pprint
 __version__ = VersionInfo('fastaqc').semantic_version().release_string()
 
 def main():
-    parser = argparse.ArgumentParser(description='Version ' + __version__ + '\nValidate fasta file', formatter_class=RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description='Version ' + __version__ + '\nCheck fasta file', formatter_class=RawTextHelpFormatter)
     parser.set_defaults(func=help)
     parser.add_argument('--verbose', '-v', action="store_true")
 
@@ -33,8 +34,9 @@ def help(args, config):
     args.parser.print_help()
 
 def info(args, cfg):
-  from Bio import SeqIO
-
+  if not args.fasta:
+    help(args, cfg)
+    return
   # Concept
   #
   # The base method iterates through all sequences in the fasta file and applies multiple 
@@ -56,7 +58,7 @@ def info(args, cfg):
     count_sequences_with_special_characters,
     count_sequences_with_ambiguous_characters,
     count_sequences_with_unknown_characters,
-    clear_tempary_fields
+    clear_temporary_fields
   ]
 
   for filename in args.fasta:
@@ -69,12 +71,11 @@ def info(args, cfg):
           c(record, stats)
       print_stats(stats)
 
-def clear_tempary_fields(record, stats):
+def clear_temporary_fields(record, stats):
   for_removal = []
   for k in stats.keys():
     if k.startswith('_'):
       for_removal.append(k)
-
   for k in for_removal:
     del stats[k]
 
@@ -186,11 +187,11 @@ def count_sequences_with_unknown_characters(record, stats):
 
 def detect_sequence_type(record, stats):
   c_dist = assert_character_distribution_available(stats)
-  if contains_only(c_dist, Alphabet.DNA.all_chars):
+  if _contains_only(c_dist, Alphabet.DNA.all_chars):
     stats['_type'] = Alphabet.DNA
-  elif contains_only(c_dist, Alphabet.RNA.all_chars):
+  elif _contains_only(c_dist, Alphabet.RNA.all_chars):
     stats['_type'] = Alphabet.RNA
-  elif contains_only(c_dist, Alphabet.AA.all_chars):
+  elif _contains_only(c_dist, Alphabet.AA.all_chars):
     stats['_type'] = Alphabet.AA
   else:
     stats['_type'] = Alphabet.OTHER
@@ -199,12 +200,12 @@ def detect_ambiguous_and_special_characters(record, stats):
   c_dist = assert_character_distribution_available(stats)
   alphabet = assert_sequence_type_available(stats)
   type_flags = set()
-  if contains_only(c_dist, alphabet.unambiguous_chars):
+  if _contains_only(c_dist, alphabet.unambiguous_chars):
     type_flags.add('unambiguous')
   else:
-    if contains(c_dist, alphabet.ambiguous_chars):
+    if _contains(c_dist, alphabet.ambiguous_chars):
       type_flags.add('ambiguous')
-    if contains(c_dist, alphabet.special_chars):
+    if _contains(c_dist, alphabet.special_chars):
       type_flags.add('special')
   stats['_type_flags'] = type_flags
 
@@ -224,13 +225,13 @@ def count_sequence_types(record, stats):
     stats['type_counts'][type] = 0
   stats['type_counts'][type] = stats['type_counts'][type]  + 1
 
-def contains(dist, characters):
+def _contains(dist, characters):
   for c in characters:
     if c in dist:
       return True
   return False
 
-def contains_only(dist, characters):
+def _contains_only(dist, characters):
   remaining = len(dist)
   for c in characters:
     if c in dist:

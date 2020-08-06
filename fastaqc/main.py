@@ -49,6 +49,7 @@ def info(args, cfg):
   #    start with an underscore.
   checks = [
     count, 
+    collect_lengths,
     compute_character_distribution,
     compute_character_positions,
     detect_sequence_type,
@@ -104,6 +105,12 @@ def print_stats(stats):
   if merge(stats['unknown_char_count']):
     print("WARNING: The file contains unknown characters for DNA, RNA and AA sequences. ")
     print("         It will probably fail in applications with strict alphabet checking.")
+
+  if 'seq_lenghts' in stats:
+    import plotille
+    print('')
+    print('Sequence length distribution')
+    print(plotille.histogram(stats['seq_lenghts'], height=25, x_min=0))
   print('')
 
 def merge(dict_of_dicts):
@@ -224,6 +231,11 @@ def count_sequence_types(record, stats):
   if type not in stats['type_counts']:
     stats['type_counts'][type] = 0
   stats['type_counts'][type] = stats['type_counts'][type]  + 1
+
+def collect_lengths(record, stats):
+  if 'seq_lenghts' not in stats:
+    stats['seq_lenghts'] = []
+  stats['seq_lenghts'].append(len(record.seq))
 
 def _contains(dist, characters):
   for c in characters:

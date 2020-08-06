@@ -7,6 +7,8 @@ Unknown), used ambiguous characters and the sequence length distribution.
 
 Usage:
 
+.. code-block:: 
+
    fastaqc info <fasta file(s)>
 
 

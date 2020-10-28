@@ -200,6 +200,8 @@ def detect_sequence_type(record, stats):
     stats['_type'] = Alphabet.RNA
   elif _contains_only(c_dist, Alphabet.AA.all_chars):
     stats['_type'] = Alphabet.AA
+  elif _contains_only(c_dist, Alphabet.AA_NC.all_chars):
+    stats['_type'] = Alphabet.AA_NC
   else:
     stats['_type'] = Alphabet.OTHER
 
